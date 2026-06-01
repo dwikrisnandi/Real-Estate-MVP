@@ -11,6 +11,8 @@ class DatabaseHandler:
 
     def _init_db(self):
         with sqlite3.connect(self.db_path) as conn:
+            # HACK: Using ON CONFLICT REPLACE for simplistic upserts.
+            # In a real distributed system (e.g., Postgres), we'd use ON CONFLICT DO UPDATE.
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS leads (
                     username TEXT PRIMARY KEY,
@@ -20,6 +22,9 @@ class DatabaseHandler:
                     status TEXT DEFAULT 'pending'
                 )
             ''')
+            # Optimize lookups for the outreach queue
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)')
+            
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS outreach_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,8 +41,11 @@ class DatabaseHandler:
             cursor = conn.cursor()
             for lead in leads:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO leads (username, display_name, profile_url)
+                    INSERT INTO leads (username, display_name, profile_url)
                     VALUES (?, ?, ?)
+                    ON CONFLICT(username) DO UPDATE SET 
+                        display_name=excluded.display_name,
+                        profile_url=excluded.profile_url
                 ''', (lead.get("username"), lead.get("display_name"), lead.get("profile_url")))
             logger.info(f"Persisted {len(leads)} leads to database.")
 
