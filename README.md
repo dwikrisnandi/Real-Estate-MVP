@@ -1,33 +1,22 @@
-# Real Estate Automation & Outreach 🏠
+# Real Estate Property & Agent Scraper 🏠
 
-> **Business Value:** Automatically scrapes property agents and owners from real estate portals and executes personalized inquiry messages, replacing hours of manual prospecting with a highly reliable, Dockerized system.
+> **Enterprise Value:** A heavy-duty pipeline that continuously monitors real estate portals, extracts agent/owner data, and executes automated inquiry messages for property acquisition or B2B PropTech sales.
 
-This project is tailored specifically for **Real Estate Agencies**, Investors, or PropTech companies that rely on high-volume property lead generation.
+Designed for **Real Estate Investment Firms** and PropTech companies dealing with high-volume, continuously updating property listings.
 
----
+## 🛠 Technical Highlights
 
-## 💼 Core Competencies
-
-1. **Lead Scraper**: Targets Real Estate portals, navigates via pagination, and extracts Agent/Owner Names, contact URLs, and IDs.
-2. **Outreach Bot**: Logs into the platform and executes targeted inquiry messages with human-like interaction patterns (±20% timing jitter).
-
----
-
-## 🛠 Features
-
-*   **Robust DOM Parsing**: Uses Playwright to handle dynamic property listings.
-*   **Enterprise Architecture**: Configured via a central `config.json`. Docker-compose ready for VPS deployment.
-*   **Audit Trail**: Logs all actions (sent, skipped, failed) to `logs/real_estate_outreach_log.csv` using Loguru.
-
----
+*   **Relational Database Persistence (SQLite):** Unlike basic scripts that spit out text files, this pipeline persists data directly into a relational database.
+*   **Advanced SQL UPSERTs:** Uses `ON CONFLICT DO UPDATE` constraints to handle duplicate property listings efficiently. If an agent updates their profile, the database updates the record seamlessly without throwing locks or duplicating data.
+*   **Indexed Outreach Queues:** The `outreach_logs` and `leads` tables are structurally linked and indexed, ensuring the outreach bot can process thousands of pending leads with O(1) lookup times.
+*   **Playwright DOM Parsing:** Capable of navigating complex map-based real estate interfaces and extracting hidden contact nodes.
 
 ## 🚀 Deployment
 
 ```bash
-# Setup Env Vars
-export RE_USERNAME="your_email@domain.com"
-export RE_PASSWORD="secure_pass"
-
-# Run via Docker
+# Initialize DB and start pipeline via Docker
 docker-compose up -d
+
+# Or run locally
+python run_scraper.py
 ```
