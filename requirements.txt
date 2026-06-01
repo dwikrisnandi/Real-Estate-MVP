@@ -1,0 +1,23 @@
+# Core
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Browser Automation
+playwright>=1.40.0
+
+# Configuration
+pyyaml>=6.0.1
+
+# Data
+pandas>=2.1.0
+
+# Rate Limiting & Scheduling
+ratelimit>=2.2.1
+
+# Enterprise Logging
+loguru>=0.7.2
+
+# CLI
+rich>=13.7.0
+click>=8.1.7

@@ -1,0 +1,95 @@
+{
+  "scraper": {
+    "target": {
+      "base_url": "https://property-portal.example.com/agents",
+      "selectors": {
+        "user_container": ".agent-card",
+        "username": ".agent-id",
+        "display_name": ".agent-name",
+        "profile_link": "a.agent-profile-url"
+      },
+      "pagination": {
+        "strategy": "click",
+        "param_name": "page",
+        "button_selector": "button.next-page-agents",
+        "max_pages": 100,
+        "scroll_delay": 3.0
+      }
+    },
+    "auth": {
+      "required": false
+    },
+    "rate_limit": {
+      "requests_per_minute": 10,
+      "min_delay_seconds": 3.0,
+      "max_delay_seconds": 6.0,
+      "backoff_multiplier": 2.0,
+      "max_backoff_seconds": 120
+    },
+    "output": {
+      "directory": "./output",
+      "filename": "real_estate_leads_{timestamp}.csv",
+      "columns": ["username", "display_name", "profile_url", "scraped_at"]
+    },
+    "browser": {
+      "headless": true,
+      "viewport_width": 1920,
+      "viewport_height": 1080,
+      "navigation_timeout": 60
+    }
+  },
+  "outreach": {
+    "account": {
+      "login_url": "https://property-portal.example.com/login",
+      "credentials": {
+        "username": "${RE_USERNAME}",
+        "password": "${RE_PASSWORD}"
+      },
+      "selectors": {
+        "username_field": "input[name='email']",
+        "password_field": "input[name='password']",
+        "submit_button": "button#login-submit"
+      },
+      "post_login_wait": 3
+    },
+    "message": {
+      "template_file": "./config/real_estate_pitch.txt",
+      "selectors": {
+        "message_button": "button.contact-agent",
+        "message_input": "textarea.message-body",
+        "send_button": "button.send-inquiry",
+        "success_indicator": ".alert-success"
+      }
+    },
+    "input": {
+      "csv_path": "./output/real_estate_leads_latest.csv",
+      "username_column": "username",
+      "skip_already_messaged": true
+    },
+    "rate_limit": {
+      "messages_per_hour": 15,
+      "min_delay_seconds": 30,
+      "max_delay_seconds": 90,
+      "jitter": true,
+      "batch_size": 5,
+      "batch_pause_minutes": 10,
+      "daily_limit": 50
+    },
+    "session": {
+      "auto_relogin": true,
+      "max_session_minutes": 120,
+      "relogin_cooldown": 60
+    },
+    "logging": {
+      "log_directory": "./logs",
+      "message_log": "./logs/real_estate_outreach_log.csv",
+      "level": "INFO"
+    },
+    "browser": {
+      "headless": true,
+      "viewport_width": 1920,
+      "viewport_height": 1080,
+      "navigation_timeout": 45
+    }
+  }
+}

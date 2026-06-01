@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  scraper:
+    build: .
+    container_name: automation_scraper
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config.json:/app/config.json
+    environment:
+      - PLATFORM_USERNAME=${PLATFORM_USERNAME}
+      - PLATFORM_PASSWORD=${PLATFORM_PASSWORD}
+    command: python run_scraper.py --config config.json
+    restart: unless-stopped
+
+  outreach:
+    build: .
+    container_name: automation_outreach
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config.json:/app/config.json
+    environment:
+      - CREATOR_USERNAME=${CREATOR_USERNAME}
+      - CREATOR_PASSWORD=${CREATOR_PASSWORD}
+    command: python run_outreach.py --config config.json
+    restart: unless-stopped
+    depends_on:
+      - scraper
