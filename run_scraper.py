@@ -29,7 +29,7 @@ from rich.table import Table
 
 from src.core import Config
 from src.scraper.platform_scraper import PlatformScraper
-from src.utils.csv_handler import CSVHandler
+from src.utils.db_handler import DatabaseHandler
 from src.utils.logger import setup_logger
 
 console = Console(force_terminal=True)
@@ -87,20 +87,20 @@ def main(config: str, headed: bool, output: str):
         asyncio.run(scraper.shutdown())
         sys.exit(0)
 
-    # ── Save results ──
+        # ── Save results ──
     if result.users:
-        output_cfg = cfg.get("output") or {}
-        output_dir = output_cfg.get("directory", "./output")
-        output_file = output or output_cfg.get(
-            "filename", "scraped_users_{timestamp}.csv"
-        )
-        filepath = Path(output_dir) / output_file
-        columns = output_cfg.get("columns", ["username", "display_name", "profile_url", "scraped_at"])
-
         user_dicts = [u.to_dict() for u in result.users]
-        user_dicts = CSVHandler.deduplicate(user_dicts, key="username")
-
-        saved_path = CSVHandler.write_users(user_dicts, filepath, columns)
+        # Quick deduplication by username
+        seen = set()
+        unique_users = []
+        for u in user_dicts:
+            if u["username"] not in seen:
+                seen.add(u["username"])
+                unique_users.append(u)
+                
+        db = DatabaseHandler()
+        db.save_leads(unique_users)
+        saved_path = db.db_path
 
         # ── Summary table ──
         table = Table(title="Scrape Results", border_style="cyan")

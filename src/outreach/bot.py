@@ -25,7 +25,7 @@ from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from src.core import Config
 from src.outreach.message_handler import MessageHandler
 from src.scraper.session_manager import BrowserSessionManager
-from src.utils.csv_handler import CSVHandler
+from src.utils.db_handler import DatabaseHandler
 from src.utils.rate_limiter import RateLimiter, RateLimiterConfig, RateLimitExceeded
 from src.utils.decorators import with_retry, safe_execute
 
@@ -49,6 +49,7 @@ class OutreachBot:
         self._session: Optional[BrowserSessionManager] = None
         self._page: Optional[Page] = None
         self._message_handler: Optional[MessageHandler] = None
+        self.db = DatabaseHandler()
 
         # Build rate limiter from config
         rl = config.get("rate_limit") or {}
@@ -216,14 +217,8 @@ class OutreachBot:
     def _log_action(
         self, username: str, status: str, error: str = ""
     ) -> None:
-        """Write an entry to the outreach audit log CSV."""
-        log_path = self._config.get("logging", "message_log", default="./logs/outreach_logger.csv")
-        CSVHandler.append_log_entry(log_path, {
-            "username": username,
-            "status": status,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "error": error,
-        })
+        """Write an entry to the SQLite outreach log."""
+        self.db.log_outreach(username, status, error)
 
     # ──────────────────────────────────────────
     # Main Run Loop
@@ -248,40 +243,16 @@ class OutreachBot:
         self._message_handler = MessageHandler(template_path)
         logger.info("Message preview:\n%s", self._message_handler.preview())
 
-        # ── Load user list ──
-        input_cfg = self._config.get("input") or {}
-        csv_path = input_cfg.get("csv_path", "./output/scraped_users_latest.csv")
-        username_col = input_cfg.get("username_column", "username")
-
+        # ── Load pending user list from DB ──
         try:
-            users = CSVHandler.read_users(csv_path, username_col)
-            logger.info("Loaded %d users from %s", len(users), csv_path)
-        except (FileNotFoundError, ValueError) as e:
-            logger.error("Failed to load user list: %s", e)
+            users = self.db.get_pending_leads()
+            logger.info("Loaded %d pending leads from database.", len(users))
+        except Exception as e:
+            logger.error("Failed to load user list from database: %s", e)
             return self._summary(start_time)
 
-        # ── Filter already-messaged users ──
-        skip_messaged = input_cfg.get("skip_already_messaged", True)
-        if skip_messaged:
-            log_path = self._config.get(
-                "logging", "message_log", default="./logs/outreach_logger.csv"
-            )
-            already_messaged = CSVHandler.get_messaged_users(log_path, "username")
-            original_count = len(users)
-            users = [
-                u for u in users
-                if u.get(username_col, "").strip().lower() not in already_messaged
-            ]
-            skipped_prev = original_count - len(users)
-            if skipped_prev:
-                logger.info(
-                    "Skipped %d already-messaged users (%d remaining)",
-                    skipped_prev, len(users),
-                )
-            self._skipped += skipped_prev
-
         if not users:
-            logger.info("No users to message — all have been contacted")
+            logger.info("No pending leads found in the database.")
             return self._summary(start_time)
 
         # ── Launch browser and login ──
@@ -294,7 +265,7 @@ class OutreachBot:
         logger.info("Starting outreach to %d users...", len(users))
 
         for i, user in enumerate(users, 1):
-            username = user.get(username_col, "").strip()
+            username = user.get("username", "").strip()
             display_name = user.get("display_name", "").strip() or None
 
             if not username:
